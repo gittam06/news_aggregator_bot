@@ -11,65 +11,61 @@ from app.transform.history import load_seen_links, save_seen_links
 
 app = FastAPI()
 
+# ... (rest of your imports and code)
+
 def job():
-    print(f"\n--- Waking up to process news at {time.strftime('%H:%M:%S')} ---")
+    print(f"\n--- Waking up for scheduled briefing at {time.strftime('%H:%M:%S')} ---")
     
+    # 1. Fetch & Clean
     sources = {
         "Yahoo Finance": "https://finance.yahoo.com/news/rssindex",
         "TechCrunch": "https://techcrunch.com/feed/"
-        # (Add your other sources back here)
     }
-
     raw_df = fetch_multiple_feeds(sources)
     cleaned_df = clean_news_data(raw_df)
     
     if cleaned_df.empty:
-        print("No articles extracted.")
         return
 
+    # 2. Memory Check
     seen_links = load_seen_links()
     new_articles_df = cleaned_df[~cleaned_df['link'].isin(seen_links)]
     
-    if new_articles_df.empty:
-        print("No NEW articles.")
+    # CRITICAL: We limit to 10 articles to stay under the 20/day Google limit
+    limit = 10 
+    articles_to_process = new_articles_df.head(limit)
+    
+    if articles_to_process.empty:
+        print("No new stories found.")
         return
         
+    print(f"Processing {len(articles_to_process)} top stories...")
+
     categorized_news = {}
-    
-    for index, article in new_articles_df.head(10).iterrows():
+    for index, article in articles_to_process.iterrows():
+        # This counts as 1 Google API request
         ai_result = process_article_with_ai(article['title'], article['summary'])
         
-        if ai_result is None:
-            time.sleep(15)
-            continue
+        if ai_result:
+            category = ai_result.get('category', 'General News')
+            bullets = ai_result.get('bullets', '')
+            if category not in categorized_news:
+                categorized_news[category] = []
             
-        category = ai_result.get('category', 'Business Trends')
-        bullets = ai_result.get('bullets', '')
+            story_text = f"{bullets}\n🔗 [Read More]({article['link']})"
+            categorized_news[category].append(story_text)
+            seen_links.append(article['link'])
         
-        if isinstance(bullets, list):
-            bullets = "\n".join(bullets)
-            
-        if category not in categorized_news:
-            categorized_news[category] = []
-            
-        formatted_story = f"{bullets}\n🔗 [Read Full Story]({article['link']})"
-        categorized_news[category].append(formatted_story)
-        seen_links.append(article['link'])
-        time.sleep(15) 
+        time.sleep(5) # Give the API a tiny breath
 
+    # 3. Send to Telegram
     for category, stories in categorized_news.items():
-        if not stories:
-            continue
-            
-        top_3_stories = stories[:3]
-        digest_body = "\n\n➖➖➖➖➖➖➖➖➖➖\n\n".join(top_3_stories)
-        final_message = f"📰 *Top Trending in {category}*\n\n{digest_body}"
-        
-        send_digest_message(category, final_message)
-        time.sleep(3)
-        
+        digest = "\n\n".join(stories)
+        final_msg = f"📰 *{category} Update*\n\n{digest}"
+        send_digest_message(category, final_msg)
+    
     save_seen_links(seen_links)
-    print("Batch complete.")
+    print("Briefing complete.")
 
 # --- THE WEB SERVER ROUTES ---
 
