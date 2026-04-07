@@ -1,0 +1,20 @@
+# === Security: NEVER UPLOAD API KEYS ===
+.env
+
+# === Project Specific: The Memory Bank ===
+seen_articles.json
+
+# === Python Core: Ignore cache and compiled files ===
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# === Virtual Environments (if you ever use them locally) ===
+venv/
+env/
+.venv/
+
+# === Mac/Windows OS junk files ===
+.DS_Store
+Thumbs.db

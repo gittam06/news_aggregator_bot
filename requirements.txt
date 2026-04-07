@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+pandas
+feedparser
+python-dotenv
+requests
+google-generativeai  # Or openai, depending on which LLM you choose
