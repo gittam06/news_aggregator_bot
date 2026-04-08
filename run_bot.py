@@ -43,7 +43,20 @@ def job():
 
     categorized_news = {}
     for index, article in articles_to_process.iterrows():
-        ai_result = process_article_with_ai(article['title'], article['summary'])
+        
+        # --- THE NEW RETRY LOGIC ---
+        max_retries = 3
+        ai_result = None
+        
+        for attempt in range(max_retries):
+            ai_result = process_article_with_ai(article['title'], article['summary'])
+            
+            if ai_result is not None:
+                break # Success! Break out of the retry loop.
+            else:
+                print(f"⚠️ API Busy. Retrying in 10 seconds... (Attempt {attempt + 1}/{max_retries})")
+                time.sleep(10) # Wait 10 seconds before asking Google again
+        # ---------------------------
         
         if ai_result:
             category = ai_result.get('category', 'General News')
@@ -55,20 +68,8 @@ def job():
             categorized_news[category].append(story_text)
             seen_links.append(article['link'])
         
-        # --- THE FIX IS HERE ---
-        # We MUST sleep for 15 seconds so we only make 4 requests per minute.
-        # This prevents Google from blocking us for breaking the "5 per minute" rule.
         print(f"Processed article. Sleeping for 15 seconds to respect API limits...")
         time.sleep(15)
-
-    # 3. Send to Telegram
-    for category, stories in categorized_news.items():
-        digest = "\n\n".join(stories)
-        final_msg = f"📰 *{category} Update*\n\n{digest}"
-        send_digest_message(category, final_msg)
-    
-    save_seen_links(seen_links)
-    print("Briefing complete.")
 
 # --- THE WEB SERVER ROUTES ---
 
