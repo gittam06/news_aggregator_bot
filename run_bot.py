@@ -43,7 +43,6 @@ def job():
 
     categorized_news = {}
     for index, article in articles_to_process.iterrows():
-        # This counts as 1 Google API request
         ai_result = process_article_with_ai(article['title'], article['summary'])
         
         if ai_result:
@@ -56,7 +55,11 @@ def job():
             categorized_news[category].append(story_text)
             seen_links.append(article['link'])
         
-        time.sleep(5) # Give the API a tiny breath
+        # --- THE FIX IS HERE ---
+        # We MUST sleep for 15 seconds so we only make 4 requests per minute.
+        # This prevents Google from blocking us for breaking the "5 per minute" rule.
+        print(f"Processed article. Sleeping for 15 seconds to respect API limits...")
+        time.sleep(15)
 
     # 3. Send to Telegram
     for category, stories in categorized_news.items():
