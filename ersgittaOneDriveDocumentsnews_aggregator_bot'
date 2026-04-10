@@ -1,0 +1,17 @@
+[33mcommit b3d93ae5f0bd6bbcdde351d27234c2368965dd99[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m
+Author: G.I.T.T.A.M <152208052+gittam06@users.noreply.github.com>
+Date:   Tue Apr 7 20:21:21 2026 +0530
+
+    Fix Gemini AI package name
+
+[33mcommit 16e5d31c24156afa4af5483190033cba073c9bc0[m
+Author: G.I.T.T.A.M <152208052+gittam06@users.noreply.github.com>
+Date:   Tue Apr 7 20:15:44 2026 +0530
+
+    Convert bot to FastAPI web service for free tier
+
+[33mcommit a956d8424aaf3be0d1f5ce23869ce34bffb15321[m
+Author: G.I.T.T.A.M <152208052+gittam06@users.noreply.github.com>
+Date:   Tue Apr 7 13:13:34 2026 +0530
+
+    Initial commit: Ready for cloud deployment

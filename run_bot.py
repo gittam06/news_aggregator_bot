@@ -11,15 +11,14 @@ from app.transform.history import load_seen_links, save_seen_links
 
 app = FastAPI()
 
-# ... (rest of your imports and code)
-
 def job():
     print(f"\n--- Waking up for scheduled briefing at {time.strftime('%H:%M:%S')} ---")
     
-    # 1. Fetch & Clean
+    # 1. Fetch & Clean (UPDATED TO GOOGLE NEWS AGGREGATORS)
     sources = {
-        "Yahoo Finance": "https://finance.yahoo.com/news/rssindex",
-        "TechCrunch": "https://techcrunch.com/feed/"
+        "Google Business & Markets": "https://news.google.com/rss/headlines/section/topic/BUSINESS?hl=en-US&gl=US&ceid=US:en",
+        "Google Technology": "https://news.google.com/rss/headlines/section/topic/TECHNOLOGY?hl=en-US&gl=US&ceid=US:en",
+        "Google Top World News": "https://news.google.com/rss/headlines/section/topic/WORLD?hl=en-US&gl=US&ceid=US:en"
     }
     raw_df = fetch_multiple_feeds(sources)
     cleaned_df = clean_news_data(raw_df)
@@ -44,7 +43,7 @@ def job():
     categorized_news = {}
     for index, article in articles_to_process.iterrows():
         
-        # --- THE NEW RETRY LOGIC ---
+        # --- RETRY LOGIC ---
         max_retries = 3
         ai_result = None
         
@@ -70,6 +69,15 @@ def job():
         
         print(f"Processed article. Sleeping for 15 seconds to respect API limits...")
         time.sleep(15)
+
+    # 3. Send to Telegram
+    for category, stories in categorized_news.items():
+        digest = "\n\n".join(stories)
+        final_msg = f"📰 *{category} Update*\n\n{digest}"
+        send_digest_message(category, final_msg)
+    
+    save_seen_links(seen_links)
+    print("Briefing complete.")
 
 # --- THE WEB SERVER ROUTES ---
 

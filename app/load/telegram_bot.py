@@ -1,25 +1,20 @@
 import requests
 from app.config import settings
 
-# --- THE ROUTER MAP ---
-# You will replace these numbers with your actual Telegram Topic IDs
+# --- THE ROUTER MAP (UPDATED TO THE "BIG 4") ---
+# You will replace these placeholder numbers with your actual Telegram Topic IDs
 TOPIC_MAP = {
-    "Business Trends": 5, 
-    "Market Updates": 9, 
-    "IPO Updates": 6, 
-    "M&A": 11, 
-    "Economic Updates": 13, 
-    "Startups & VC": 15, 
-    "Banking Updates": 17, 
-    "Mutual Funds & Insurance": 19, 
-    "Tech & FAANG": 21
+    "Markets & Economy": 3,   # Replace 1111 with actual ID
+    "Tech & Innovation": 4,   # Replace 2222 with actual ID
+    "Corporate Moves": 5,     # Replace 3333 with actual ID
+    "Business Trends": 6      # Replace 4444 with actual ID
 }
 
 def send_telegram_message(ai_data: dict, article_link: str):
     token = settings.TELEGRAM_BOT_TOKEN
     chat_id = settings.TELEGRAM_CHAT_ID
     
-    category = ai_data.get('category', 'Business Trends')
+    category = ai_data.get('category', 'Business Trends') # Default fallback
     bullets = ai_data.get('bullets', '')
     
     if isinstance(bullets, list):
@@ -27,7 +22,7 @@ def send_telegram_message(ai_data: dict, article_link: str):
         
     message = f"📌 *{category}*\n\n{bullets}\n\n🔗 [Read Full Story]({article_link})"
     
-    # 1. Look up the correct Thread ID based on the category
+    # Look up the correct Thread ID based on the category
     thread_id = TOPIC_MAP.get(category)
     
     url = f"https://api.telegram.org/bot{token}/sendMessage"
@@ -38,7 +33,6 @@ def send_telegram_message(ai_data: dict, article_link: str):
         "disable_web_page_preview": False
     }
     
-    # 2. If a thread ID exists, add it to the payload so it routes to the correct Topic
     if thread_id:
         payload["message_thread_id"] = thread_id
     
@@ -65,7 +59,7 @@ def send_digest_message(category: str, digest_text: str):
         "chat_id": chat_id,
         "text": digest_text,
         "parse_mode": "Markdown",
-        "disable_web_page_preview": True # Set to True so it doesn't load 3 massive link previews
+        "disable_web_page_preview": True # Set to True so it doesn't load massive link previews
     }
     
     if thread_id:
@@ -76,4 +70,4 @@ def send_digest_message(category: str, digest_text: str):
     if response.status_code == 200:
         print(f"✅ Daily Digest delivered to '{category}' topic!")
     else:
-        print(f"❌ Failed to send digest: {response.text}")        
+        print(f"❌ Failed to send digest: {response.text}")

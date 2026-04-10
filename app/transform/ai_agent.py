@@ -10,22 +10,25 @@ def process_article_with_ai(title: str, content: str) -> dict:
     Sends the article to the LLM to get a categorized, 3-bullet summary.
     """
     prompt = f"""
-    You are a professional financial and tech news editor for a busy executive.
-    Analyze the following news article:
-    Title: {title}
-    Content: {content}
+    You are an elite financial and tech news editor curating content for a premium Telegram group.
+    Read the following article title and summary.
 
-    Return a JSON object with EXACTLY two keys:
-    1. "category": Choose the single MOST relevant category from this strict list: 
-       [
-           "Business Trends", "Market Updates", "IPO Updates", 
-           "M&A", "Economic Updates", "Startups & VC", 
-           "Banking Updates", "Mutual Funds & Insurance", 
-           "Tech & FAANG"
-       ]
-    2. "bullets": A string containing exactly 3 short, punchy bullet points summarizing the news. Use a relevant emoji at the start of each bullet.
+    Article Title: {title}
+    Summary: {summary}
 
-    Output ONLY raw JSON. Do not include markdown formatting like ```json.
+    Task 1: Categorize this article into EXACTLY ONE of the following 4 categories:
+    1. "Markets & Economy" (Inflation, interest rates, stock market rallies, macroeconomics)
+    2. "Tech & Innovation" (AI, Apple/Google news, major startups, software)
+    3. "Corporate Moves" (IPO updates, Mergers & Acquisitions, CEO changes)
+    4. "Business Trends" (Global trade, supply chain, retail, energy shock)
+
+    Task 2: Write 3 short, punchy bullet points summarizing the article for a fast-paced audience.
+
+    Return ONLY a valid JSON object matching this exact format, with no markdown formatting blocks around it:
+    {{
+        "category": "Exact Category Name Here",
+        "bullets": "• Point 1\\n• Point 2\\n• Point 3"
+    }}
     """
     
     try:
