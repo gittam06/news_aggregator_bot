@@ -1,14 +1,17 @@
-from google import genai
 import json
+import google.generativeai as genai
 from app.config import settings
 
-# Initialize the new GenAI client
-client = genai.Client(api_key=settings.LLM_API_KEY)
+# Configure Gemini API
+genai.configure(api_key=settings.GEMINI_API_KEY)
 
-def process_article_with_ai(title: str, content: str) -> dict:
-    """
-    Sends the article to the LLM to get a categorized, 3-bullet summary.
-    """
+# Using the fast model you have been using in the logs
+model = genai.GenerativeModel('gemini-2.5-flash')
+
+def process_article_with_ai(title: str, summary: str):
+    """Sends the article to Gemini and forces it to return JSON for the Big 4 categories."""
+    
+    # The prompt MUST be inside the function to access the title and summary variables
     prompt = f"""
     You are an elite financial and tech news editor curating content for a premium Telegram group.
     Read the following article title and summary.
@@ -32,20 +35,17 @@ def process_article_with_ai(title: str, content: str) -> dict:
     """
     
     try:
-        # New SDK syntax for generating content
-        response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=prompt
-        )
+        response = model.generate_content(prompt)
+        response_text = response.text.strip()
         
-        # Clean up the response in case the AI adds markdown blocks
-        clean_text = response.text.replace('```json', '').replace('```', '').strip()
-        
-        # Convert the string response into a Python dictionary
-        structured_data = json.loads(clean_text)
-        return structured_data
+        # Clean up the response in case Gemini accidentally adds markdown code blocks (```json ... ```)
+        if response_text.startswith("```json"):
+            response_text = response_text[7:-3].strip()
+        elif response_text.startswith("```"):
+            response_text = response_text[3:-3].strip()
+            
+        return json.loads(response_text)
         
     except Exception as e:
-        print(f"❌ AI Processing failed for '{title}': {e}")
-        # Return None instead of fake text so we can skip it
+        print(f"❌ AI Processing error: {e}")
         return None
