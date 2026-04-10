@@ -1,41 +1,76 @@
-import time # Add this at the very top of the file!
+import sys
+import os
+import time
+
+# Fix Windows terminal encoding for emojis
+if sys.platform == 'win32':
+    sys.stdout.reconfigure(encoding='utf-8')
+    sys.stderr.reconfigure(encoding='utf-8')
+
 from app.extract.rss_fetcher import fetch_multiple_feeds
 from app.transform.cleaner import clean_news_data
 from app.transform.ai_agent import process_article_with_ai
 from app.load.telegram_bot import send_digest_message
+from app.transform.history import load_seen_links, save_seen_links
 
+# --- RSS Sources (matching run_bot.py production config) ---
 sources = {
-    "Yahoo Finance": "https://finance.yahoo.com/news/rssindex",
-    "Hacker News": "https://news.ycombinator.com/rss",
-    "TechCrunch": "https://techcrunch.com/feed/",
-    "Renaissance Capital (IPOs)": "https://www.renaissancecapital.com/feed/ipo",
-    "Reuters M&A": "https://www.reutersagency.com/feed/?best-topics=mergers-acquisitions&post_type=best",
-    "Banking Dive": "https://www.bankingdive.com/feeds/news/",
-    "Morningstar (Funds)": "https://www.morningstar.com/rss/all",
-    "VentureBeat": "https://feeds.feedburner.com/venturebeat/SZYF",
-    "Crunchbase News": "https://news.crunchbase.com/feed/",
+    "Google Business & Markets": "https://news.google.com/rss/headlines/section/topic/BUSINESS?hl=en-US&gl=US&ceid=US:en",
+    "Google Technology": "https://news.google.com/rss/headlines/section/topic/TECHNOLOGY?hl=en-US&gl=US&ceid=US:en",
+    "Google Top World News": "https://news.google.com/rss/headlines/section/topic/WORLD?hl=en-US&gl=US&ceid=US:en"
 }
 
-print("1. Extracting...")
+# ───── Step 1: Extract ─────
+print("1. Extracting from RSS feeds...")
 raw_df = fetch_multiple_feeds(sources)
 
-print("2. Cleaning...")
+# ───── Step 2: Clean ─────
+print("\n2. Cleaning raw data...")
 cleaned_df = clean_news_data(raw_df)
 
-print("3. Synthesizing & Grouping with AI...")
+if cleaned_df.empty:
+    print("⚠️  No articles extracted. Exiting.")
+    exit()
+
+# ───── Step 3: Deduplicate using history ─────
+print("\n3. Checking history for duplicates...")
+seen_links = load_seen_links()
+new_articles_df = cleaned_df[~cleaned_df['link'].isin(seen_links)]
+
+# Limit to 10 articles to stay under the free-tier Gemini quota (20 req/day)
+ARTICLE_LIMIT = 10
+articles_to_process = new_articles_df.head(ARTICLE_LIMIT)
+
+if articles_to_process.empty:
+    print("✅ No new stories found. All caught up!")
+    exit()
+
+print(f"📰 Found {len(articles_to_process)} new articles to process.\n")
+
+# ───── Step 4: AI Categorization with Retry Logic ─────
+print("4. Categorizing articles with Gemini AI...")
 categorized_news = {}
 
-for index, article in cleaned_df.head(10).iterrows():
-    print(f"\nReading: {article['title']}")
+for index, article in articles_to_process.iterrows():
+    print(f"\n  Reading: {article['title']}")
     
-    ai_result = process_article_with_ai(article['title'], article['summary'])
+    # Retry logic (matches run_bot.py)
+    max_retries = 3
+    ai_result = None
     
-    # NEW: If the AI failed (rate limit, json error), skip this article completely
-    if ai_result is None:
-        print("Skipping article due to AI error. Pausing before next attempt...")
-        time.sleep(15) 
-        continue
+    for attempt in range(max_retries):
+        ai_result = process_article_with_ai(article['title'], article['summary'])
         
+        if ai_result is not None:
+            break  # Success
+        else:
+            # ai_agent already waits the API-suggested delay on 429 errors
+            print(f"  ⚠️ Retrying... (Attempt {attempt + 1}/{max_retries})")
+    
+    if ai_result is None:
+        print("  ❌ Skipping article after all retries failed.")
+        continue
+    
     category = ai_result.get('category', 'Business Trends')
     bullets = ai_result.get('bullets', '')
     
@@ -44,25 +79,29 @@ for index, article in cleaned_df.head(10).iterrows():
     
     if category not in categorized_news:
         categorized_news[category] = []
-        
-    formatted_story = f"{bullets}\n🔗 [Read Full Story]({article['link']})"
+    
+    formatted_story = f"{bullets}\n🔗 [Read More]({article['link']})"
     categorized_news[category].append(formatted_story)
+    seen_links.append(article['link'])
     
-    # NEW: The Speed Bump! Pause for 15 seconds to avoid the 429 Rate Limit
-    print("Sleeping for 15 seconds to respect API limits...")
-    time.sleep(15)
+    # gemini-2.0-flash allows 15 RPM, so 5s gap is safe
+    time.sleep(5)
 
-print("\n4. Delivering Digests to Telegram...")
-for category, stories in categorized_news.items():
-    # Only send if we actually have stories (avoids empty messages)
-    if not stories:
-        continue
+# ───── Step 5: Deliver to Telegram ─────
+print("\n\n5. Delivering Digests to Telegram...")
+if not categorized_news:
+    print("⚠️  No articles were categorized. Nothing to send.")
+else:
+    for category, stories in categorized_news.items():
+        if not stories:
+            continue
         
-    top_3_stories = stories[:3]
-    digest_body = "\n\n➖➖➖➖➖➖➖➖➖➖\n\n".join(top_3_stories)
-    final_message = f"📰 *Top Trending in {category}*\n\n{digest_body}"
-    
-    send_digest_message(category, final_message)
-    
-    # Small pause between sending Telegram messages too
-    time.sleep(3)
+        digest_body = "\n\n".join(stories)
+        final_message = f"📰 *{category} Update*\n\n{digest_body}"
+        
+        send_digest_message(category, final_message)
+        time.sleep(3)  # Small pause between Telegram messages
+
+# ───── Step 6: Save history ─────
+save_seen_links(seen_links)
+print("\n✅ Pipeline test complete! History saved.")

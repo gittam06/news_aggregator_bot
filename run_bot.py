@@ -53,8 +53,8 @@ def job():
             if ai_result is not None:
                 break # Success! Break out of the retry loop.
             else:
-                print(f"⚠️ API Busy. Retrying in 10 seconds... (Attempt {attempt + 1}/{max_retries})")
-                time.sleep(10) # Wait 10 seconds before asking Google again
+                # ai_agent already waits the API-suggested delay on 429 errors
+                print(f"⚠️ Retrying... (Attempt {attempt + 1}/{max_retries})")
         # ---------------------------
         
         if ai_result:
@@ -67,8 +67,8 @@ def job():
             categorized_news[category].append(story_text)
             seen_links.append(article['link'])
         
-        print(f"Processed article. Sleeping for 15 seconds to respect API limits...")
-        time.sleep(15)
+        # gemini-2.0-flash allows 15 RPM, so 5s gap is safe
+        time.sleep(5)
 
     # 3. Send to Telegram
     for category, stories in categorized_news.items():

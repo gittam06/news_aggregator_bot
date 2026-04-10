@@ -3,6 +3,7 @@
 
 # === Project Specific: The Memory Bank ===
 seen_articles.json
+api_usage.json
 
 # === Python Core: Ignore cache and compiled files ===
 __pycache__/
