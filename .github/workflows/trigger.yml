@@ -1,0 +1,21 @@
+name: Scheduled News Trigger
+
+on:
+  schedule:
+    # 8:00 AM IST (2:30 AM UTC)
+    - cron: '30 2 * * *'
+    # 7:00 PM IST (1:30 PM UTC)
+    - cron: '30 13 * * *'
+  
+  # This line adds a physical "Run Workflow" button in your GitHub repository!
+  workflow_dispatch: 
+
+jobs:
+  ping-render:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Trigger Request to Render
+        run: |
+          echo "Pinging the Render ETL Pipeline..."
+          curl -X GET https://news-aggregator-bot-0749.onrender.com/trigger-news
+          echo "Trigger sent successfully!"
