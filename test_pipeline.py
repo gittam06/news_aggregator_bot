@@ -15,9 +15,21 @@ from app.transform.history import load_seen_links, save_seen_links
 
 # --- RSS Sources (matching run_bot.py production config) ---
 sources = {
-    "Google Business & Markets": "https://news.google.com/rss/headlines/section/topic/BUSINESS?hl=en-US&gl=US&ceid=US:en",
-    "Google Technology": "https://news.google.com/rss/headlines/section/topic/TECHNOLOGY?hl=en-US&gl=US&ceid=US:en",
-    "Google Top World News": "https://news.google.com/rss/headlines/section/topic/WORLD?hl=en-US&gl=US&ceid=US:en"
+    "Business & Markets": [
+        ("CNBC Top News", "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114"),
+        ("BBC Business", "https://feeds.bbci.co.uk/news/business/rss.xml"),
+        ("MarketWatch", "http://feeds.marketwatch.com/marketwatch/topstories"),
+    ],
+    "Technology": [
+        ("TechCrunch", "https://techcrunch.com/feed/"),
+        ("The Verge", "https://www.theverge.com/rss/index.xml"),
+        ("Wired", "https://www.wired.com/feed/rss"),
+    ],
+    "World News": [
+        ("BBC World", "https://feeds.bbci.co.uk/news/world/rss.xml"),
+        ("NPR News", "https://feeds.npr.org/1001/rss.xml"),
+        ("Al Jazeera", "https://www.aljazeera.com/xml/rss/all.xml"),
+    ],
 }
 
 # ───── Step 1: Extract ─────
